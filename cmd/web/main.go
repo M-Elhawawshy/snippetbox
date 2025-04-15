@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"github.com/go-playground/form/v4"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"html/template"
 	"wa3wa3.snippetbox/internal/models"
 
 	"flag"
@@ -12,8 +14,10 @@ import (
 )
 
 type application struct {
-	logger   *slog.Logger
-	snippets *models.SnippetModel
+	logger        *slog.Logger
+	snippets      *models.SnippetModel
+	templateCache map[string]*template.Template
+	formDecoder   *form.Decoder
 }
 
 func main() {
@@ -33,12 +37,23 @@ func main() {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
-
 	defer db.Close()
+
+	// initialize and cache templates into the app as a dependency
+	templateCache, err := newTemplateCache()
+
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	formDecoder := form.NewDecoder()
 
 	app := &application{
 		logger,
 		&models.SnippetModel{DB: db},
+		templateCache,
+		formDecoder,
 	}
 
 	logger.Info("starting server", "addr", *addr)
