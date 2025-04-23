@@ -61,6 +61,7 @@ func main() {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
+
 	defer pool.Close()
 	sessionManager.Lifetime = 12 * time.Hour
 	sessionManager.Store = pgxstore.New(pool)
