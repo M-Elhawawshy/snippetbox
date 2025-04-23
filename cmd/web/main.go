@@ -75,9 +75,12 @@ func main() {
 
 	logger.Info("starting server", "addr", *addr)
 	server := http.Server{
-		Addr:     *addr,
-		Handler:  app.routes(),
-		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		Addr:         *addr,
+		Handler:      app.routes(),
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	err = server.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
