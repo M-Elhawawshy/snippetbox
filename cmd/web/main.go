@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"html/template"
+	"time"
 	"wa3wa3.snippetbox/internal/models"
 
 	"flag"
@@ -14,10 +19,11 @@ import (
 )
 
 type application struct {
-	logger        *slog.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
-	formDecoder   *form.Decoder
+	logger         *slog.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
 func main() {
@@ -49,16 +55,32 @@ func main() {
 
 	formDecoder := form.NewDecoder()
 
+	sessionManager := scs.New()
+	pool, err := pgxpool.New(context.Background(), "postgres://web:pass@127.0.0.1:5432/snippetbox")
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+	defer pool.Close()
+	sessionManager.Lifetime = 12 * time.Hour
+	sessionManager.Store = pgxstore.New(pool)
+	sessionManager.Cookie.Secure = true
 	app := &application{
 		logger,
 		&models.SnippetModel{DB: db},
 		templateCache,
 		formDecoder,
+		sessionManager,
 	}
 
 	logger.Info("starting server", "addr", *addr)
+	server := http.Server{
+		Addr:     *addr,
+		Handler:  app.routes(),
+		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
+	}
 
-	err = http.ListenAndServe(*addr, app.routes())
+	err = server.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 
 	if err != nil {
 		logger.Error(err.Error())
