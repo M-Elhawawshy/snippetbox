@@ -17,7 +17,7 @@ func (app *application) newTemplateData(r *http.Request) templateData {
 	}
 }
 
-func (app *application) serveError(w http.ResponseWriter, r *http.Request, err error) {
+func (app *application) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	var (
 		method = r.Method
 		uri    = r.URL.RequestURI()
@@ -35,7 +35,7 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, page stri
 	ts, ok := app.templateCache[page]
 	if !ok {
 		err := fmt.Errorf("the template %s does not exist", page)
-		app.serveError(w, r, err)
+		app.serverError(w, r, err)
 		return
 	}
 	buffer := new(bytes.Buffer)
@@ -43,7 +43,7 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, page stri
 	err := ts.ExecuteTemplate(buffer, "base", data)
 
 	if err != nil {
-		app.serveError(w, r, err)
+		app.serverError(w, r, err)
 		return
 	}
 
