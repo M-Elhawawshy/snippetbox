@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+type UserModelInterface interface {
+	Insert(name, email, password string) error
+	Authenticate(email, password string) (int, error)
+	Exists(id int) (bool, error)
+}
+
 type User struct {
 	ID             int
 	Name           string
@@ -30,7 +36,8 @@ func (m *UserModel) Insert(name, email, password string) error {
 	statement := `INSERT INTO users (name, email, hashed_password, created) VALUES ($1, $2, $3, NOW())`
 	_, err = m.DB.Exec(statement, name, email, string(hashedPassword))
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" && strings.Contains(pgErr.Message, "users_uc_email") {
 				return ErrDuplicateEmail
 			}
